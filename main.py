@@ -7,21 +7,17 @@ import datetime
 import threading
 import time
 
-# Bot Token
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-# movies.json থেকে APK লোড করা হচ্ছে
 with open("movies.json", "r") as f:
     APK = json.load(f)
 
-# লগিং
 def log_event(text):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open("log.txt", "a") as f:
         f.write(f"{now} - {text}\n")
 
-# 1 ঘণ্টা পরে ডিলিট
 def delete_message_later(chat_id, message_id, delay=3600, retry=3):
     for attempt in range(retry):
         time.sleep(delay if attempt == 0 else 10)
@@ -33,19 +29,23 @@ def delete_message_later(chat_id, message_id, delay=3600, retry=3):
             log_event(f"Delete failed {message_id} in {chat_id}: {e}")
             continue
 
-# /start কমান্ড
 @bot.message_handler(commands=['start'])
 def send_apk(message: Message):
+    parts = message.text.split()
+    apk_code = parts[1] if len(parts) > 1 else "default"
 
-    bot.send_message(message.chat.id, "📲 Welcome!\nPlease wait...")
+    if apk_code not in APK:
+        bot.send_message(message.chat.id, f"❌ APK not found: {apk_code}")
+        return
+
+    bot.send_message(message.chat.id, "📲 Please wait...")
 
     user_id = message.chat.id
     username = message.chat.username
     first_name = message.chat.first_name
-    log_event(f"{first_name} (@{username}) - ID: {user_id} - APK Sent")
+    log_event(f"{first_name} (@{username}) - ID: {user_id} - APK Sent: {apk_code}")
 
-    # default key ব্যবহার করা হচ্ছে
-    apk = APK.get("default")
+    apk = APK.get(apk_code)
 
     try:
         sent_msg = bot.copy_message(
@@ -53,17 +53,14 @@ def send_apk(message: Message):
             from_chat_id=apk["chat_id"],
             message_id=apk["msg_id"]
         )
-
         threading.Thread(
             target=delete_message_later,
             args=(message.chat.id, sent_msg.message_id)
         ).start()
-
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ APK পাঠানো যায়নি: {e}")
-        log_event(f"Failed to send APK to {user_id}: {e}")
+        bot.send_message(message.chat.id, f"❌ Failed to send APK: {e}")
+        log_event(f"Failed to send APK {apk_code} to {user_id}: {e}")
 
 keep_alive()
-
-print("✅ APK Bot Running...")
+print("✅ Multi-APK Bot Running...")
 bot.infinity_polling(timeout=10, long_polling_timeout=5)
