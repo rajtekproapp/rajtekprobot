@@ -7,11 +7,11 @@ import datetime
 import threading
 import time
 
-# টোকেন
+# Bot Token
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-# apk.json থেকে APK লোড করা হচ্ছে
+# movies.json থেকে APK লোড করা হচ্ছে
 with open("movies.json", "r") as f:
     APK = json.load(f)
 
@@ -33,7 +33,7 @@ def delete_message_later(chat_id, message_id, delay=3600, retry=3):
             log_event(f"Delete failed {message_id} in {chat_id}: {e}")
             continue
 
-# /start
+# /start কমান্ড
 @bot.message_handler(commands=['start'])
 def send_apk(message: Message):
 
@@ -44,6 +44,7 @@ def send_apk(message: Message):
     first_name = message.chat.first_name
     log_event(f"{first_name} (@{username}) - ID: {user_id} - APK Sent")
 
+    # default key ব্যবহার করা হচ্ছে
     apk = APK.get("default")
 
     try:
